@@ -31,23 +31,6 @@ public class MensualidadDAO {
         return null;
     }
 
-    // Buscar mensualidad por placa (sin importar vigencia)
-    public Mensualidad findByPlaca(String placa) throws SQLException {
-        String sql = "SELECT * FROM mensualidades WHERE placa = ?";
-
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, placa.toUpperCase());
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return mapResultSetToMensualidad(rs);
-            }
-        }
-        return null;
-    }
-
 
 
     // Mapear ResultSet a objeto Mensualidad

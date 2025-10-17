@@ -13,22 +13,6 @@ public class TarifaDAO {
         return DatabaseConfig.getInstance().getConnection();
     }
 
-    // Buscar tarifa por ID
-    public Tarifa findById(int id) throws SQLException {
-        String sql = "SELECT * FROM tarifas WHERE id = ?";
-
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, id);
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                return mapResultSetToTarifa(rs);
-            }
-        }
-        return null;
-    }
 
     // Obtener la tarifa activa (CRÍTICO para cálculo de cobros)
     public Tarifa findTarifaActiva() throws SQLException {

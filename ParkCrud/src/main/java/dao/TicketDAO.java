@@ -11,8 +11,9 @@ public class TicketDAO {
         return DatabaseConfig.getInstance().getConnection();
     }
 
-
-    // Buscar ticket abierto por placa (CRÍTICO - verifica si hay ticket sin salida)
+    /**
+     * Buscar ticket abierto por placa (CRÍTICO - verifica si hay ticket sin salida)
+     */
     public Ticket findTicketAbiertoByPlaca(String placa) throws SQLException {
         String sql = "SELECT * FROM tickets WHERE placa = ? AND fecha_salida IS NULL " +
                 "AND activo = true ORDER BY fecha_ingreso DESC LIMIT 1";
@@ -32,14 +33,15 @@ public class TicketDAO {
 
 
 
-    // Crear nuevo ticket (ingreso de vehículo)
-    public Ticket create(Ticket ticket) throws SQLException {
+    /**
+     * Crear nuevo ticket (ingreso de vehículo)
+     */
+    public Ticket create(Ticket ticket, Connection conn) throws SQLException {
         String sql = "INSERT INTO tickets (numero_folio, placa, tipo_ingreso, fecha_ingreso, " +
                 "operador_ingreso_id, qr_code, monto_cobrado, pagado, activo) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id";
 
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, ticket.getNumeroFolio());
             stmt.setString(2, ticket.getPlaca().toUpperCase());
@@ -60,31 +62,33 @@ public class TicketDAO {
         return null;
     }
 
-    // Registrar salida de vehículo
-    public boolean registrarSalida(int ticketId, int operadorSalidaId,
-                                   int tiempoEstadiaMinutos) throws SQLException {
+    /**
+     * Registrar salida de vehículo
+     */
+    public boolean registrarSalida(int ticketId, int operadorSalidaId, int tiempoEstadiaMinutos, Connection conn) throws SQLException {
         String sql = "UPDATE tickets SET fecha_salida = CURRENT_TIMESTAMP, " +
                 "operador_salida_id = ?, tiempo_estadia_minutos = ?, " +
-                "fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?";
+                "fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ? AND fecha_salida IS NULL";
 
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, operadorSalidaId);
             stmt.setInt(2, tiempoEstadiaMinutos);
             stmt.setInt(3, ticketId);
 
-            return stmt.executeUpdate() > 0;
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
         }
     }
 
-    // Actualizar monto cobrado y marcar como pagado
-    public boolean registrarPago(int ticketId, java.math.BigDecimal monto) throws SQLException {
+    /**
+     * Actualizar monto cobrado y marcar como pagado
+     */
+    public boolean registrarPago(int ticketId, java.math.BigDecimal monto, Connection conn) throws SQLException {
         String sql = "UPDATE tickets SET monto_cobrado = ?, pagado = true, " +
                 "fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?";
 
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setBigDecimal(1, monto);
             stmt.setInt(2, ticketId);
@@ -93,7 +97,23 @@ public class TicketDAO {
         }
     }
 
-    // Generar número de folio único
+    public boolean registrarPago(int ticketId, java.math.BigDecimal monto) throws SQLException {
+        String sql = "UPDATE tickets SET monto_cobrado = ?, pagado = true, " +
+                "fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?";
+
+        try ( Connection conn = getConnection();
+              PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setBigDecimal(1, monto);
+            stmt.setInt(2, ticketId);
+
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Generar número de folio único
+     */
     public String generarNumeroFolio() throws SQLException {
         String sql = "SELECT COALESCE(MAX(CAST(SUBSTRING(numero_folio FROM 4) AS INTEGER)), 0) + 1 " +
                 "FROM tickets WHERE numero_folio LIKE 'TKT%'";
@@ -110,23 +130,62 @@ public class TicketDAO {
         return "TKT000001";
     }
 
+    /**
+     * Contar tickets abiertos (vehículos en el parqueadero)
+     */
+    public int contarTicketsAbiertos() throws SQLException {
+        String sql = "SELECT COUNT(*) FROM tickets WHERE fecha_salida IS NULL AND activo = true";
 
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
 
-    // Mapear ResultSet a objeto Ticket
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Verificar si existe ticket abierto para una placa
+     */
+    public boolean existeTicketAbierto(String placa) throws SQLException {
+        return findTicketAbiertoByPlaca(placa) != null;
+    }
+
+    /**
+     * Mapear ResultSet a objeto Ticket
+     * ✅ CORREGIDO: Manejo apropiado de campos NULL
+     */
     private Ticket mapResultSetToTicket(ResultSet rs) throws SQLException {
         Ticket ticket = new Ticket();
         ticket.setId(rs.getInt("id"));
         ticket.setNumeroFolio(rs.getString("numero_folio"));
         ticket.setPlaca(rs.getString("placa"));
         ticket.setTipoIngreso(rs.getString("tipo_ingreso"));
-        ticket.setOperadorIngresoId(rs.getInt("operador_ingreso_id"));
-        ticket.setOperadorSalidaId(rs.getInt("operador_salida_id"));
         ticket.setQrCode(rs.getString("qr_code"));
         ticket.setMontoCobrado(rs.getBigDecimal("monto_cobrado"));
         ticket.setPagado(rs.getBoolean("pagado"));
         ticket.setActivo(rs.getBoolean("activo"));
-        ticket.setTiempoEstadiaMinutos(rs.getInt("tiempo_estadia_minutos"));
 
+        // ✅ Campos Integer que pueden ser NULL
+        int operadorIngresoId = rs.getInt("operador_ingreso_id");
+        if (!rs.wasNull()) {
+            ticket.setOperadorIngresoId(operadorIngresoId);
+        }
+
+        int operadorSalidaId = rs.getInt("operador_salida_id");
+        if (!rs.wasNull()) {
+            ticket.setOperadorSalidaId(operadorSalidaId);
+        }
+
+        int tiempoEstadia = rs.getInt("tiempo_estadia_minutos");
+        if (!rs.wasNull()) {
+            ticket.setTiempoEstadiaMinutos(tiempoEstadia);
+        }
+
+        // ✅ Timestamps
         Timestamp fechaIngreso = rs.getTimestamp("fecha_ingreso");
         if (fechaIngreso != null) {
             ticket.setFechaIngreso(fechaIngreso.toLocalDateTime());

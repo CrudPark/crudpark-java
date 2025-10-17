@@ -36,19 +36,4 @@ public class OperadorService {
         }
     }
 
-    /**
-     * Busca un operador por su ID.
-     *
-     * @param id ID del operador.
-     * @return El operador encontrado o null si no existe.
-     */
-    public Operador obtenerOperadorPorId(int id) {
-        try {
-            return operadorDAO.findById(id);
-        } catch (SQLException e) {
-            System.err.println("Error al obtener operador por ID: " + e.getMessage());
-            return null;
-        }
-    }
-
 }

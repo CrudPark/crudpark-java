@@ -15,14 +15,14 @@ public class DatabaseConfig {
 
     private DatabaseConfig() {
         try {
-            // Cargar configuración desde properties
+
             PropertiesConfig props = PropertiesConfig.getInstance();
 
             this.url = props.getProperty("db.url");
             this.user = props.getProperty("db.user");
             this.password = props.getProperty("db.password");
 
-            // Cargar el driver de PostgreSQL
+
             Class.forName("org.postgresql.Driver");
 
         } catch (ClassNotFoundException e) {
@@ -50,24 +50,10 @@ public class DatabaseConfig {
         return connection;
     }
 
-    public void closeConnection() {
-        if (connection != null) {
-            try {
-                connection.close();
-                System.out.println("Conexión cerrada");
-            } catch (SQLException e) {
-                System.err.println("Error al cerrar la conexión: " + e.getMessage());
-            }
-        }
+    public Connection getNewConnection() throws SQLException {
+        Connection conn = DriverManager.getConnection(url, user, password);
+        return conn;
     }
 
-    public boolean testConnection() {
-        try {
-            Connection conn = getConnection();
-            return conn != null && !conn.isClosed();
-        } catch (SQLException e) {
-            System.err.println("Error al probar la conexión: " + e.getMessage());
-            return false;
-        }
-    }
+
 }
