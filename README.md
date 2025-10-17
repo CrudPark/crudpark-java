@@ -150,7 +150,7 @@ View (Swing) → Controller → Service → DAO → PostgreSQL
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/tu-usuario/crudpark-java.git
+git clone https://github.com/CrudPark/crudpark-java
 cd crudpark-java
 ```
 
@@ -381,12 +381,7 @@ Gracias por su visita.
 ## 👥 Equipo de Desarrollo
 
 ### Integrantes
-- **[Tu Nombre]** - Desarrollador Java (Equipo Berners-Lee)
-- **[Nombre Compañero 1]** - Desarrollador C# (Equipo Van Rossum)
-- **[Nombre Compañero 2]** - Desarrollador C# (Equipo Van Rossum)
-
-### Registro del equipo
-👉 **Equipo registrado en**: [https://teams.crudzaso.com](https://teams.crudzaso.com)
+- **[Yeferson Garcia Marin]** - Desarrollador Java (Berners-Lee)
 
 ---
 
@@ -399,13 +394,6 @@ Verificar:
 2. Credenciales en config.properties son correctas
 3. Base de datos crudpark_db existe
 4. Firewall no bloquea puerto 5432
-```
-
-### Error al generar QR
-```
-Verificar:
-1. Dependencia zxing está en pom.xml
-2. Maven dependencies están actualizadas (mvn clean install)
 ```
 
 ### Ticket no imprime
@@ -432,22 +420,3 @@ Verificar:
 Este proyecto es parte de un ejercicio académico para **Crudzaso**.
 
 ---
-
-## 🔗 Enlaces Relacionados
-
-- **Repositorio C# Front**: [crudpark-csharp-front](https://github.com/tu-org/crudpark-csharp-front)
-- **Repositorio C# Back**: [crudpark-csharp-back](https://github.com/tu-org/crudpark-csharp-back)
-- **Documentación del proyecto**: [CrudPark Docs](https://docs.crudzaso.com)
-- **Registro de equipos**: [https://teams.crudzaso.com](https://teams.crudzaso.com)
-
----
-
-## 📧 Contacto
-
-Para dudas o sugerencias sobre este proyecto:
-- **Email**: tu-email@ejemplo.com
-- **GitHub**: [@tu-usuario](https://github.com/tu-usuario)
-
----
-
-**Desarrollado con ☕ y 💻 por el equipo CrudPark**
