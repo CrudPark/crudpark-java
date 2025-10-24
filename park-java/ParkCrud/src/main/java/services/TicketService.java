@@ -3,14 +3,13 @@ package services;
 import config.DatabaseConfig;
 import dao.*;
 import models.*;
+import util.FormatMontoUtil;
 
-import java.awt.print.PrinterException;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 /**
  * Servicio principal para gestionar los tickets del sistema de parqueadero.
@@ -118,17 +117,12 @@ public class TicketService {
 
         // 4. Imprimir ticket (Operación fuera de la transacción)
         if (ticketCreado != null) {
-            try {
-                Operador operador = operadorDAO.findById(operadorIngresoId); // Lectura fuera de la conexión transaccional
-                if (operador != null) {
-                    // Nota: Se asume que TicketPrinterService ya está implementado
-                    TicketPrinterService printer = new TicketPrinterService(ticketCreado, operador.getNombre());
-                    printer.imprimir();
-                    System.out.println("✓ Ticket impreso exitosamente");
-                }
-            } catch (PrinterException e) {
-                // Se registra el error de impresión pero se continúa, el ticket ya está en BD.
-                System.err.println("⚠ Error al imprimir ticket. El ingreso se registró correctamente: " + e.getMessage());
+            Operador operador = operadorDAO.findById(operadorIngresoId); // Lectura fuera de la conexión transaccional
+            if (operador != null) {
+                // Nota: Se asume que TicketPrinterService ya está implementado
+                TicketPrinterService printer = new TicketPrinterService(ticketCreado, operador.getNombre());
+                printer.imprimir();
+                System.out.println("✓ Ticket impreso exitosamente");
             }
         }
 
@@ -200,6 +194,17 @@ public class TicketService {
                     ticketDAO.registrarPago(ticket.getId(), BigDecimal.ZERO, conn);
                     System.out.println("✓ Salida registrada (Mensualidad - sin cobro)");
                     conn.commit(); // 2. COMMIT para Mensualidad
+                    System.out.println("✓ Salida registrada (Mensualidad - sin cobro)");
+
+                    // ⚙️ PUNTO DE IMPRESIÓN 1: Después de COMMIT de Mensualidad (monto 0)
+                    try {
+                        // Usamos el constructor modificado (ver archivo 2)
+                        ClosePrinterService printer = new ClosePrinterService(ticket, operadorSalidaId, metodoPagoFinal, BigDecimal.ZERO, minutosEstadia);
+                        printer.imprimir();
+                    } catch (Exception printEx) {
+                        System.err.println("⚠ Error al imprimir el ticket de salida (Mensualidad): " + printEx.getMessage());
+                        // NOTA: No hacemos rollback aquí, el error de impresión es secundario al éxito DB.
+                    }
                     return BigDecimal.ZERO; // 💡 Retorna 0.00
                 } else {
                     // Si falla la salida (algo grave), forzamos rollback y relanzamos
@@ -233,7 +238,8 @@ public class TicketService {
                 if (tarifa.getTopeDiario() != null && monto.compareTo(tarifa.getTopeDiario()) > 0) {
                     monto = tarifa.getTopeDiario();
                 }
-                System.out.println("💵 Monto total a cobrar: $" + monto);
+                FormatMontoUtil formatMonto = new FormatMontoUtil();
+                System.out.println(String.format("💵 Monto total a cobrar: $" + formatMonto.formatMonto(monto)));
             } else {
                 System.out.println("✓ Dentro del tiempo de gracia (" + tiempoGracia + " min) - Sin cobro");
                 monto = BigDecimal.ZERO; // Asegura que el monto sea 0 si está en tiempo de gracia
@@ -280,6 +286,16 @@ public class TicketService {
 
             conn.commit(); // 6. COMMIT para Invitado (Éxito total)
 
+            // PUNTO DE IMPRESIÓN 2: Después de COMMIT de Invitado
+            try {
+                // Usamos el constructor modificado (ver archivo 2)
+                ClosePrinterService printer = new ClosePrinterService(ticket, operadorSalidaId, metodoPagoFinal, monto, minutosEstadia);
+                printer.imprimir();
+            } catch (Exception printEx) {
+                System.err.println("⚠ Error al imprimir el ticket de salida (Cobro): " + printEx.getMessage());
+                // NOTA: El error de impresión es secundario. El registro DB fue exitoso.
+            }
+
             System.out.println("✓ Salida registrada exitosamente - Placa: " + placa + " - Monto: $" + monto);
             return monto; // 💡 Retorna el monto calculado
 
@@ -308,6 +324,8 @@ public class TicketService {
             }
         }
     }
+
+
     /**
      * Registra un pago manual (usado por operador desde el panel).
      */

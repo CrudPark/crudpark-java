@@ -1,6 +1,5 @@
 package config;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
@@ -8,7 +7,8 @@ import java.util.Properties;
 public class PropertiesConfig {
 
     private static PropertiesConfig instance;
-    private Properties properties;
+    private final Properties properties;
+    private static final String CONFIG_FILE = "config.properties";
 
     private PropertiesConfig() {
         properties = new Properties();
@@ -17,6 +17,7 @@ public class PropertiesConfig {
 
     public static PropertiesConfig getInstance() {
         if (instance == null) {
+            // Uso de synchronized para asegurar que solo una instancia sea creada en entornos multihilo
             synchronized (PropertiesConfig.class) {
                 if (instance == null) {
                     instance = new PropertiesConfig();
@@ -27,23 +28,25 @@ public class PropertiesConfig {
     }
 
     private void loadProperties() {
-        try {
+        // Usamos try-with-resources para asegurar que el InputStream se cierre automáticamente
+        try (InputStream input = getClass().getClassLoader().getResourceAsStream(CONFIG_FILE)) {
 
-            InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties");
-
-
+            // Verificamos si el ClassLoader encontró el recurso DENTRO del JAR/Classpath
             if (input == null) {
-                input = new FileInputStream("config.properties");
+                // Si input es null, el archivo no se incluyó en el JAR.
+                // No intentamos usar FileInputStream para evitar dependencias de rutas externas.
+                throw new IOException("El archivo de configuración '" + CONFIG_FILE + "' NO fue encontrado en el classpath (resources/).");
             }
 
             properties.load(input);
             System.out.println("Archivo de configuración cargado exitosamente");
-            input.close();
 
         } catch (IOException e) {
-            System.err.println("Error al cargar el archivo de configuración: " + e.getMessage());
+            // Capturamos el error (ya sea de archivo no encontrado o de lectura)
+            System.err.println("Error grave al cargar el archivo de configuración: " + e.getMessage());
             e.printStackTrace();
 
+            // Si falla la carga, cargamos la configuración por defecto
             loadDefaultProperties();
         }
     }
@@ -61,5 +64,4 @@ public class PropertiesConfig {
     public String getProperty(String key) {
         return properties.getProperty(key);
     }
-
 }
